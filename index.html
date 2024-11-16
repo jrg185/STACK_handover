@@ -295,94 +295,102 @@
         </div>
     </div>
 
-    <script>
-        // Initialize submission time to current time
-        document.getElementById('submissionTime').value = new Date().toISOString().slice(0, 16);
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-        // Google Sheet submission URL
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRTR_4lNQPzqy13nmJTEgCMAECVoUzGfAk3LjAiAS7nidMMjKwO4eD20_rgyPg4Bf7zg/exec';
+<script>
+    // Initialize Firebase with your config
+    const firebaseConfig = {
+        apiKey: "AIzaSyBA_LjilP5G8nagcMtmRfCEIVceT2qObiU",
+        authDomain: "stackdb-e1b31.firebaseapp.com",
+        projectId: "stackdb-e1b31",
+        storageBucket: "stackdb-e1b31.firebasestorage.app",
+        messagingSenderId: "54108058421",
+        appId: "1:54108058421:web:12bd6e9a59ecca8c50127c"
+    };
 
-        function addTaskRow() {
-            const table = document.getElementById('tasksTable');
-            const newRow = table.insertRow(-1);
-            newRow.innerHTML = `
-                <td><input type="text" name="taskDescription[]"></td>
-                <td><input type="number" name="taskProgress[]" min="0" max="100"></td>
-                <td><input type="time" name="taskETA[]"></td>
-                <td><input type="text" name="taskOwner[]"></td>
-            `;
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Initialize submission time to current time
+    document.getElementById('submissionTime').value = new Date().toISOString().slice(0, 16);
+
+    function addTaskRow() {
+        const table = document.getElementById('tasksTable');
+        const newRow = table.insertRow(-1);
+        newRow.innerHTML = `
+            <td><input type="text" name="taskDescription[]"></td>
+            <td><input type="number" name="taskProgress[]" min="0" max="100"></td>
+            <td><input type="time" name="taskETA[]"></td>
+            <td><input type="text" name="taskOwner[]"></td>
+        `;
+    }
+
+    function addActionRow() {
+        const table = document.getElementById('actionPlanTable');
+        const newRow = table.insertRow(-1);
+        newRow.innerHTML = `
+            <td><input type="text" name="actionItem[]"></td>
+            <td><input type="time" name="actionDeadline[]"></td>
+            <td><input type="text" name="actionOwner[]"></td>
+            <td>
+                <select name="actionStatus[]">
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </td>
+        `;
+    }
+
+    function addIssueRow() {
+        const table = document.getElementById('issuesTable');
+        const newRow = table.insertRow(-1);
+        newRow.innerHTML = `
+            <td><input type="text" name="issueDescription[]"></td>
+            <td><input type="text" name="issueImpact[]"></td>
+            <td><input type="text" name="issueActions[]"></td>
+            <td><input type="text" name="issueNextSteps[]"></td>
+        `;
+    }
+
+    document.getElementById('handoverForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Collect form data
+        const formData = new FormData(this);
+        const data = {
+            timestamp: new Date().toISOString(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // Process form data
+        for (let [key, value] of formData.entries()) {
+            if (key.endsWith('[]')) {
+                const baseKey = key.slice(0, -2);
+                if (!data[baseKey]) data[baseKey] = [];
+                data[baseKey].push(value);
+            } else {
+                data[key] = value;
+            }
         }
 
-        function addActionRow() {
-            const table = document.getElementById('actionPlanTable');
-            const newRow = table.insertRow(-1);
-            newRow.innerHTML = `
-                <td><input type="text" name="actionItem[]"></td>
-                <td><input type="time" name="actionDeadline[]"></td>
-                <td><input type="text" name="actionOwner[]"></td>
-                <td>
-                    <select name="actionStatus[]">
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                    </select>
-                </td>
-            `;
+        try {
+            // Add document to Firestore
+            await db.collection('handovers').add(data);
+
+            alert('Handover submitted successfully!');
+            this.reset();
+            // Reset submission time to current time
+            document.getElementById('submissionTime').value = new Date().toISOString().slice(0, 16);
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error submitting handover. Please try again.');
         }
-
-        function addIssueRow() {
-            const table = document.getElementById('issuesTable');
-            const newRow = table.insertRow(-1);
-            newRow.innerHTML = `
-                <td><input type="text" name="issueDescription[]"></td>
-                <td><input type="text" name="issueImpact[]"></td>
-                <td><input type="text" name="issueActions[]"></td>
-                <td><input type="text" name="issueNextSteps[]"></td>
-            `;
-        }
-
-        document.getElementById('handoverForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Collect form data
-            const formData = new FormData(this);
-            const data = {};
-            
-            // Add timestamp if not already present
-            if (!formData.get('submissionTime')) {
-                formData.set('submissionTime', new Date().toISOString());
-            }
-            
-            for (let [key, value] of formData.entries()) {
-                if (key.endsWith('[]')) {
-                    const baseKey = key.slice(0, -2);
-                    if (!data[baseKey]) data[baseKey] = [];
-                    data[baseKey].push(value);
-                } else {
-                    data[key] = value;
-                }
-            }
-
-            try {
-                const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    cache: 'no-cache',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                alert('Handover submitted successfully!');
-                this.reset();
-                // Reset submission time to current time
-                document.getElementById('submissionTime').value = new Date().toISOString().slice(0, 16);
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error submitting handover. Please try again.');
-            }
-        });
-    </script>
+    });
+</script>
+</body>
+</html>
 </body>
 </html>
