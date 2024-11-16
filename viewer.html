@@ -154,230 +154,130 @@
         </div>
     </div>
 
-    <script>
-        // Google Sheet Web App URL
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRTR_4lNQPzqy13nmJTEgCMAECVoUzGfAk3LjAiAS7nidMMjKwO4eD20_rgyPg4Bf7zg/exec';
-        
-        let allHandovers = [];
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-        async function fetchHandovers() {
-            try {
-                const response = await fetch(SCRIPT_URL + '?action=read');
-                const data = await response.json();
-                allHandovers = data;
+<script>
+    // Initialize Firebase with your config
+    const firebaseConfig = {
+        apiKey: "AIzaSyBA_LjilP5G8nagcMtmRfCEIVceT2qObiU",
+        authDomain: "stackdb-e1b31.firebaseapp.com",
+        projectId: "stackdb-e1b31",
+        storageBucket: "stackdb-e1b31.firebasestorage.app",
+        messagingSenderId: "54108058421",
+        appId: "1:54108058421:web:12bd6e9a59ecca8c50127c"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    
+    let allHandovers = [];
+
+    // Real-time listener for handovers
+    function setupHandoverListener() {
+        db.collection('handovers')
+            .orderBy('createdAt', 'desc')
+            .onSnapshot((snapshot) => {
+                allHandovers = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
                 filterHandovers();
-            } catch (error) {
-                console.error('Error fetching handovers:', error);
+            }, (error) => {
+                console.error("Error fetching handovers:", error);
                 document.getElementById('handoversList').innerHTML = 
                     '<p>Error loading handovers. Please try again later.</p>';
-            }
-        }
-
-        function filterHandovers() {
-            const department = document.getElementById('departmentFilter').value;
-            const date = document.getElementById('dateFilter').value;
-            const shift = document.getElementById('shiftFilter').value;
-
-            const filtered = allHandovers.filter(handover => {
-                if (department && handover.department !== department) return false;
-                
-                const handoverDate = new Date(handover.submissionTime);
-                const filterDate = date ? new Date(date) : null;
-                
-                if (filterDate) {
-                    const handoverDateString = handoverDate.toISOString().split('T')[0];
-                    if (handoverDateString !== date) return false;
-                }
-                
-                if (shift && handover.shift !== shift) return false;
-                
-                return true;
             });
+    }
 
-            displayHandovers(filtered);
-        }
+    function filterHandovers() {
+        const department = document.getElementById('departmentFilter').value;
+        const date = document.getElementById('dateFilter').value;
+        const shift = document.getElementById('shiftFilter').value;
 
-        function displayHandovers(handovers) {
-            const container = document.getElementById('handoversList');
-            container.innerHTML = '';
-
-            if (handovers.length === 0) {
-                container.innerHTML = '<p>No handovers found matching the selected filters.</p>';
-                return;
-            }
-
-            // Sort handovers by submission time (newest first)
-            handovers.sort((a, b) => new Date(b.submissionTime) - new Date(a.submissionTime));
-
-            handovers.forEach((handover, index) => {
-                const card = document.createElement('div');
-                card.className = 'handover-card';
-                
-                const submissionTime = new Date(handover.submissionTime).toLocaleString();
-                const equipmentStatus = getEquipmentStatusHTML(handover);
-                const tasksHTML = getTasksHTML(handover);
-                const actionsHTML = getActionsHTML(handover);
-                const issuesHTML = getIssuesHTML(handover);
-
-                card.innerHTML = `
-                    <h3>${handover.department} - ${handover.shift} Shift
-                        <button onclick="toggleDetails(${index})" class="expand-btn">Show Details</button>
-                    </h3>
-                    <p><strong>Time:</strong> ${submissionTime}</p>
-                    
-                    <div class="summary-section">
-                        <p><strong>Status Overview</strong></p>
-                        <p>Selection: ${handover.selectionCompletion}% | Replenishment: ${handover.replenishmentCompletion}%</p>
-                    </div>
-
-                    <div class="details-section" id="details-${index}">
-                        <div class="equipment-section">
-                            <h4>Equipment Status</h4>
-                            ${equipmentStatus}
-                        </div>
-
-                        ${tasksHTML}
-                        ${actionsHTML}
-                        ${issuesHTML}
-
-                        <div class="notes-section">
-                            <h4>Key Notes</h4>
-                            <p>${handover.keyNotes || 'No notes provided'}</p>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function getEquipmentStatusHTML(handover) {
-            const equipment = [
-                { name: 'Forklifts', status: handover.forkliftStatus, notes: handover.forkliftNotes },
-                { name: 'Tuggers', status: handover.tuggerStatus, notes: handover.tuggerNotes },
-                { name: 'Pallet Jacks', status: handover.palletJackStatus, notes: handover.palletJackNotes },
-                { name: 'Scanners', status: handover.scannerStatus, notes: handover.scannerNotes },
-                { name: 'Triggers', status: handover.triggerStatus, notes: handover.triggerNotes }
-            ];
-
-            return `
-                <ul class="equipment-list">
-                    ${equipment.map(item => `
-                        <li class="status-${item.status.toLowerCase()}">
-                            ${item.name}: ${item.status}
-                            ${item.notes ? `<br><small>Notes: ${item.notes}</small>` : ''}
-                        </li>
-                    `).join('')}
-                </ul>
-            `;
-        }
-
-        function getTasksHTML(handover) {
-            if (!handover.taskDescription || handover.taskDescription.length === 0) {
-                return '';
-            }
-
-            const tasks = handover.taskDescription.map((desc, i) => ({
-                description: desc,
-                progress: handover.taskProgress[i],
-                eta: handover.taskETA[i],
-                owner: handover.taskOwner[i]
-            }));
-
-            return `
-                <div class="tasks-section">
-                    <h4>Tasks in Progress</h4>
-                    <ul class="task-list">
-                        ${tasks.map(task => `
-                            <li>
-                                ${task.description} (${task.progress}% complete)
-                                <br><small>ETA: ${task.eta} | Owner: ${task.owner}</small>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-            `;
-        }
-
-        function getActionsHTML(handover) {
-            if (!handover.actionItem || handover.actionItem.length === 0) {
-                return '';
-            }
-
-            const actions = handover.actionItem.map((item, i) => ({
-                item: item,
-                deadline: handover.actionDeadline[i],
-                owner: handover.actionOwner[i],
-                status: handover.actionStatus[i]
-            }));
-
-            return `
-                <div class="action-section">
-                    <h4>Action Items</h4>
-                    <ul class="action-list">
-                        ${actions.map(action => `
-                            <li>
-                                ${action.item}
-                                <br><small>Deadline: ${action.deadline} | Owner: ${action.owner} | Status: ${action.status}</small>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-            `;
-        }
-
-        function getIssuesHTML(handover) {
-            if (!handover.issueDescription || handover.issueDescription.length === 0) {
-                return '';
-            }
-
-            const issues = handover.issueDescription.map((desc, i) => ({
-                description: desc,
-                impact: handover.issueImpact[i],
-                actions: handover.issueActions[i],
-                nextSteps: handover.issueNextSteps[i]
-            }));
-
-            return `
-                <div class="issues-section">
-                    <h4>Critical Issues</h4>
-                    <ul class="issue-list">
-                        ${issues.map(issue => `
-                            <li>
-                                <strong>${issue.description}</strong>
-                                <br>Impact: ${issue.impact}
-                                <br>Actions Taken: ${issue.actions}
-                                <br>Next Steps: ${issue.nextSteps}
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-            `;
-        }
-
-        function toggleDetails(index) {
-            const detailsSection = document.getElementById(`details-${index}`);
-            const card = detailsSection.parentElement;
-            const button = card.querySelector('.expand-btn');
+        const filtered = allHandovers.filter(handover => {
+            if (department && handover.department !== department) return false;
             
-            if (detailsSection.style.display === 'none' || !detailsSection.style.display) {
-                detailsSection.style.display = 'block';
-                button.textContent = 'Hide Details';
-            } else {
-                detailsSection.style.display = 'none';
-                button.textContent = 'Show Details';
+            const handoverDate = new Date(handover.submissionTime);
+            const filterDate = date ? new Date(date) : null;
+            
+            if (filterDate) {
+                const handoverDateString = handoverDate.toISOString().split('T')[0];
+                if (handoverDateString !== date) return false;
             }
+            
+            if (shift && handover.shift !== shift) return false;
+            
+            return true;
+        });
+
+        displayHandovers(filtered);
+    }
+
+    function displayHandovers(handovers) {
+        const container = document.getElementById('handoversList');
+        container.innerHTML = '';
+
+        if (handovers.length === 0) {
+            container.innerHTML = '<p>No handovers found matching the selected filters.</p>';
+            return;
         }
 
-        // Add event listeners for filters
-        document.getElementById('departmentFilter').addEventListener('change', filterHandovers);
-        document.getElementById('dateFilter').addEventListener('change', filterHandovers);
-        document.getElementById('shiftFilter').addEventListener('change', filterHandovers);
+        handovers.forEach((handover, index) => {
+            const card = document.createElement('div');
+            card.className = 'handover-card';
+            
+            const submissionTime = new Date(handover.submissionTime).toLocaleString();
+            const equipmentStatus = getEquipmentStatusHTML(handover);
+            const tasksHTML = getTasksHTML(handover);
+            const actionsHTML = getActionsHTML(handover);
+            const issuesHTML = getIssuesHTML(handover);
 
-        // Set default date filter to today
-        document.getElementById('dateFilter').valueAsDate = new Date();
+            card.innerHTML = `
+                <h3>${handover.department} - ${handover.shift} Shift
+                    <button onclick="toggleDetails(${index})" class="expand-btn">Show Details</button>
+                </h3>
+                <p><strong>Time:</strong> ${submissionTime}</p>
+                
+                <div class="summary-section">
+                    <p><strong>Status Overview</strong></p>
+                    <p>Selection: ${handover.selectionCompletion}% | Replenishment: ${handover.replenishmentCompletion}%</p>
+                </div>
 
-        // Initial fetch
-        fetchHandovers();
-    </script>
+                <div class="details-section" id="details-${index}">
+                    <div class="equipment-section">
+                        <h4>Equipment Status</h4>
+                        ${equipmentStatus}
+                    </div>
+
+                    ${tasksHTML}
+                    ${actionsHTML}
+                    ${issuesHTML}
+
+                    <div class="notes-section">
+                        <h4>Key Notes</h4>
+                        <p>${handover.keyNotes || 'No notes provided'}</p>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Keep your existing helper functions (getEquipmentStatusHTML, getTasksHTML, etc.)
+    // [Previous helper functions remain the same]
+
+    // Add event listeners for filters
+    document.getElementById('departmentFilter').addEventListener('change', filterHandovers);
+    document.getElementById('dateFilter').addEventListener('change', filterHandovers);
+    document.getElementById('shiftFilter').addEventListener('change', filterHandovers);
+
+    // Set default date filter to today
+    document.getElementById('dateFilter').valueAsDate = new Date();
+
+    // Start listening for handovers
+    setupHandoverListener();
+</script>
 </body>
 </html>
