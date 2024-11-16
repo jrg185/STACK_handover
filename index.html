@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S.T.A.C.K. Shift Handover Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        .submit-btn {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .submit-btn:hover {
+            background: #218838;
+        }
+        .add-btn {
+            background: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <form id="handoverForm">
+            <div class="header">
+                <h1>S.T.A.C.K. Shift Handover Form</h1>
+            </div>
+
+            <!-- Shift Information Section -->
+            <div class="section">
+                <h2>Shift Information</h2>
+                <div class="grid">
+                    <div>
+                        <label for="department">Department:</label>
+                        <select id="department" name="department" required>
+                            <option value="inbound">Inbound</option>
+                            <option value="outbound">Outbound</option>
+                            <option value="inventory">Inventory</option>
+                            <option value="quality">Quality</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="shift">Shift:</label>
+                        <select id="shift" name="shift" required>
+                            <option value="morning">Morning</option>
+                            <option value="afternoon">Afternoon</option>
+                            <option value="night">Night</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="submissionTime">Submission Time:</label>
+                        <input type="datetime-local" id="submissionTime" name="submissionTime" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Section -->
+            <div class="section">
+                <h2>Status Overview</h2>
+                <div class="grid">
+                    <div>
+                        <label for="selectionCompletion">Selection Completion (%):</label>
+                        <input type="number" id="selectionCompletion" name="selectionCompletion" min="0" max="100" required>
+                    </div>
+                    <div>
+                        <label for="replenishmentCompletion">Replenishment Completion (%):</label>
+                        <input type="number" id="replenishmentCompletion" name="replenishmentCompletion" min="0" max="100" required>
+                    </div>
+                    <div>
+                        <label for="estimatedFinishTime">Estimated Finish Time:</label>
+                        <input type="time" id="estimatedFinishTime" name="estimatedFinishTime" required>
+                    </div>
+                </div>
+
+                <h3>Equipment Status</h3>
+                <table>
+                    <tr>
+                        <th>Equipment Type</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                    </tr>
+                    <tr>
+                        <td>Forklifts</td>
+                        <td>
+                            <select name="forkliftStatus" required>
+                                <option value="operational">Operational</option>
+                                <option value="maintenance">Maintenance Required</option>
+                                <option value="offline">Offline</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="forkliftNotes"></td>
+                    </tr>
+                    <tr>
+                        <td>Tuggers</td>
+                        <td>
+                            <select name="tuggerStatus" required>
+                                <option value="operational">Operational</option>
+                                <option value="maintenance">Maintenance Required</option>
+                                <option value="offline">Offline</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="tuggerNotes"></td>
+                    </tr>
+                    <tr>
+                        <td>Pallet Jacks</td>
+                        <td>
+                            <select name="palletJackStatus" required>
+                                <option value="operational">Operational</option>
+                                <option value="maintenance">Maintenance Required</option>
+                                <option value="offline">Offline</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="palletJackNotes"></td>
+                    </tr>
+                    <tr>
+                        <td>Scanners</td>
+                        <td>
+                            <select name="scannerStatus" required>
+                                <option value="operational">Operational</option>
+                                <option value="maintenance">Maintenance Required</option>
+                                <option value="offline">Offline</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="scannerNotes"></td>
+                    </tr>
+                    <tr>
+                        <td>Triggers</td>
+                        <td>
+                            <select name="triggerStatus" required>
+                                <option value="operational">Operational</option>
+                                <option value="maintenance">Maintenance Required</option>
+                                <option value="offline">Offline</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="triggerNotes"></td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Tasks Section -->
+            <div class="section">
+                <h2>Tasks in Progress</h2>
+                <table id="tasksTable">
+                    <tr>
+                        <th>Description</th>
+                        <th>Progress (%)</th>
+                        <th>ETA</th>
+                        <th>Owner</th>
+                    </tr>
+                    <tr>
+                        <td><input type="text" name="taskDescription[]"></td>
+                        <td><input type="number" name="taskProgress[]" min="0" max="100"></td>
+                        <td><input type="time" name="taskETA[]"></td>
+                        <td><input type="text" name="taskOwner[]"></td>
+                    </tr>
+                </table>
+                <button type="button" class="add-btn" onclick="addTaskRow()">Add Task</button>
+            </div>
+
+            <!-- Action Plan Section -->
+            <div class="section">
+                <h2>Action Plan</h2>
+                <table id="actionPlanTable">
+                    <tr>
+                        <th>Action Item</th>
+                        <th>Deadline</th>
+                        <th>Owner</th>
+                        <th>Status</th>
+                    </tr>
+                    <tr>
+                        <td><input type="text" name="actionItem[]"></td>
+                        <td><input type="time" name="actionDeadline[]"></td>
+                        <td><input type="text" name="actionOwner[]"></td>
+                        <td>
+                            <select name="actionStatus[]">
+                                <option value="pending">Pending</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </td>
+                    </tr>
+                </table>
+                <button type="button" class="add-btn" onclick="addActionRow()">Add Action Item</button>
+            </div>
+
+            <!-- Critical Issues Section -->
+            <div class="section">
+                <h2>Critical Issues</h2>
+                <table id="issuesTable">
+                    <tr>
+                        <th>Issue Description</th>
+                        <th>Impact</th>
+                        <th>Actions Taken</th>
+                        <th>Next Steps</th>
+                    </tr>
+                    <tr>
+                        <td><input type="text" name="issueDescription[]"></td>
+                        <td><input type="text" name="issueImpact[]"></td>
+                        <td><input type="text" name="issueActions[]"></td>
+                        <td><input type="text" name="issueNextSteps[]"></td>
+                    </tr>
+                </table>
+                <button type="button" class="add-btn" onclick="addIssueRow()">Add Issue</button>
+            </div>
+
+            <!-- Key Notes Section -->
+            <div class="section">
+                <h2>Key Notes</h2>
+                <div>
+                    <label for="keyNotes">Important Information for Next Shift:</label>
+                    <textarea id="keyNotes" name="keyNotes" rows="4"></textarea>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn">Submit Handover</button>
+        </form>
+        
+        <div style="margin-top: 20px; text-align: right;">
+            <a href="viewer.html" class="add-btn" style="text-decoration: none;">View Previous Handovers</a>
+        </div>
+    </div>
+
+    <script>
+        // Initialize submission time to current time
+        document.getElementById('submissionTime').value = new Date().toISOString().slice(0, 16);
+
+        // Google Sheet submission URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJRxM4w758dWvPNHRHdExa8qCn3571xPKjSr5cscCdZ9WW6SLJFXEZrtlwrCCr_MJ6/exec';
+
+        function addTaskRow() {
+            const table = document.getElementById('tasksTable');
+            const newRow = table.insertRow(-1);
+            newRow.innerHTML = `
+                <td><input type="text" name="taskDescription[]"></td>
+                <td><input type="number" name="taskProgress[]" min="0" max="100"></td>
+                <td><input type="time" name="taskETA[]"></td>
+                <td><input type="text" name="taskOwner[]"></td>
+            `;
+        }
+
+        function addActionRow() {
+            const table = document.getElementById('actionPlanTable');
+            const newRow = table.insertRow(-1);
+            newRow.innerHTML = `
+                <td><input type="text" name="actionItem[]"></td>
+                <td><input type="time" name="actionDeadline[]"></td>
+                <td><input type="text" name="actionOwner[]"></td>
+                <td>
+                    <select name="actionStatus[]">
+                        <option value="pending">Pending</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </td>
+            `;
+        }
+
+        function addIssueRow() {
+            const table = document.getElementById('issuesTable');
+            const newRow = table.insertRow(-1);
+            newRow.innerHTML = `
+                <td><input type="text" name="issueDescription[]"></td>
+                <td><input type="text" name="issueImpact[]"></td>
+                <td><input type="text" name="issueActions[]"></td>
+                <td><input type="text" name="issueNextSteps[]"></td>
+            `;
+        }
+
+        document.getElementById('handoverForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Collect form data
+            const formData = new FormData(this);
+            const data = {};
+            
+            // Add timestamp if not already present
+            if (!formData.get('submissionTime')) {
+                formData.set('submissionTime', new Date().toISOString());
+            }
+            
+            for (let [key, value] of formData.entries()) {
+                if (key.endsWith('[]')) {
+                    const baseKey = key.slice(0, -2);
+                    if (!data[baseKey]) data[baseKey] = [];
+                    data[baseKey].push(value);
+                } else {
+                    data[key] = value;
+                }
+            }
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                alert('Handover submitted successfully!');
+                this.reset();
+                // Reset submission time to current time
+                document.getElementById('submissionTime').value = new Date().toISOString().slice(0, 16);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error submitting handover. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>
