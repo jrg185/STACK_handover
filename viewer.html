@@ -267,12 +267,130 @@
 
     // Keep your existing helper functions (getEquipmentStatusHTML, getTasksHTML, etc.)
     // [Previous helper functions remain the same]
+    
 
     // Add event listeners for filters
     document.getElementById('departmentFilter').addEventListener('change', filterHandovers);
     document.getElementById('dateFilter').addEventListener('change', filterHandovers);
     document.getElementById('shiftFilter').addEventListener('change', filterHandovers);
+// Helper functions
+    function getEquipmentStatusHTML(handover) {
+        const equipment = [
+            { name: 'Forklifts', status: handover.forkliftStatus, notes: handover.forkliftNotes },
+            { name: 'Tuggers', status: handover.tuggerStatus, notes: handover.tuggerNotes },
+            { name: 'Pallet Jacks', status: handover.palletJackStatus, notes: handover.palletJackNotes },
+            { name: 'Scanners', status: handover.scannerStatus, notes: handover.scannerNotes },
+            { name: 'Triggers', status: handover.triggerStatus, notes: handover.triggerNotes }
+        ];
 
+        return `
+            <ul class="equipment-list">
+                ${equipment.map(item => `
+                    <li class="status-${item.status?.toLowerCase()}">
+                        ${item.name}: ${item.status || 'N/A'}
+                        ${item.notes ? `<br><small>Notes: ${item.notes}</small>` : ''}
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+    }
+
+    function getTasksHTML(handover) {
+        if (!handover.taskDescription || handover.taskDescription.length === 0) {
+            return '';
+        }
+
+        const tasks = handover.taskDescription.map((desc, i) => ({
+            description: desc,
+            progress: handover.taskProgress?.[i],
+            eta: handover.taskETA?.[i],
+            owner: handover.taskOwner?.[i]
+        }));
+
+        return `
+            <div class="tasks-section">
+                <h4>Tasks in Progress</h4>
+                <ul class="task-list">
+                    ${tasks.map(task => `
+                        <li>
+                            ${task.description} (${task.progress || 0}% complete)
+                            <br><small>ETA: ${task.eta || 'N/A'} | Owner: ${task.owner || 'N/A'}</small>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    function getActionsHTML(handover) {
+        if (!handover.actionItem || handover.actionItem.length === 0) {
+            return '';
+        }
+
+        const actions = handover.actionItem.map((item, i) => ({
+            item: item,
+            deadline: handover.actionDeadline?.[i],
+            owner: handover.actionOwner?.[i],
+            status: handover.actionStatus?.[i]
+        }));
+
+        return `
+            <div class="action-section">
+                <h4>Action Items</h4>
+                <ul class="action-list">
+                    ${actions.map(action => `
+                        <li>
+                            ${action.item}
+                            <br><small>Deadline: ${action.deadline || 'N/A'} | Owner: ${action.owner || 'N/A'} | Status: ${action.status || 'N/A'}</small>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    function getIssuesHTML(handover) {
+        if (!handover.issueDescription || handover.issueDescription.length === 0) {
+            return '';
+        }
+
+        const issues = handover.issueDescription.map((desc, i) => ({
+            description: desc,
+            impact: handover.issueImpact?.[i],
+            actions: handover.issueActions?.[i],
+            nextSteps: handover.issueNextSteps?.[i]
+        }));
+
+        return `
+            <div class="issues-section">
+                <h4>Critical Issues</h4>
+                <ul class="issue-list">
+                    ${issues.map(issue => `
+                        <li>
+                            <strong>${issue.description}</strong>
+                            <br>Impact: ${issue.impact || 'N/A'}
+                            <br>Actions Taken: ${issue.actions || 'N/A'}
+                            <br>Next Steps: ${issue.nextSteps || 'N/A'}
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    function toggleDetails(index) {
+        const detailsSection = document.getElementById(`details-${index}`);
+        const card = detailsSection.parentElement;
+        const button = card.querySelector('.expand-btn');
+        
+        if (detailsSection.style.display === 'none' || !detailsSection.style.display) {
+            detailsSection.style.display = 'block';
+            button.textContent = 'Hide Details';
+        } else {
+            detailsSection.style.display = 'none';
+            button.textContent = 'Show Details';
+        }
+    }
     // Set default date filter to today
     document.getElementById('dateFilter').valueAsDate = new Date();
 
