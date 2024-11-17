@@ -154,5 +154,142 @@
             </template>
         </div>
     </div>
+    <!-- Add Firebase Scripts here -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBA_LjilP5G8nagcMtmRfCEIVceT2qObiU",
+            authDomain: "stackdb-e1b31.firebaseapp.com",
+            projectId: "stackdb-e1b31",
+            storageBucket: "stackdb-e1b31.firebasestorage.app",
+            messagingSenderId: "54108058421",
+            appId: "1:54108058421:web:12bd6e9a59ecca8c50127c"
+        };
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        console.log('Firebase initialized');
+
+        // Filter handling
+        const filterDepartment = document.getElementById('filterDepartment');
+        const filterDate = document.getElementById('filterDate');
+        const filterShift = document.getElementById('filterShift');
+
+        // Function to apply filters and load handovers
+        async function loadHandovers() {
+            const handoversList = document.getElementById('handoversList');
+            const template = document.getElementById('handoverTemplate');
+            
+            try {
+                // Start with base query
+                let query = db.collection('handovers');
+
+                // Apply department filter
+                if (filterDepartment.value !== 'all') {
+                    query = query.where('department', '==', filterDepartment.value);
+                }
+
+                // Apply shift filter
+                if (filterShift.value !== 'all') {
+                    query = query.where('shift', '==', filterShift.value);
+                }
+
+                // Apply date filter if selected
+                if (filterDate.value) {
+                    const selectedDate = new Date(filterDate.value);
+                    const nextDay = new Date(selectedDate);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    
+                    query = query.where('timestamp', '>=', selectedDate)
+                              .where('timestamp', '<', nextDay);
+                }
+
+                // Order by timestamp
+                query = query.orderBy('timestamp', 'desc');
+
+                // Get the filtered results
+                const snapshot = await query.get();
+                
+                handoversList.innerHTML = ''; // Clear previous content
+
+                if (snapshot.empty) {
+                    handoversList.innerHTML = '<p>No handovers found matching the selected filters.</p>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const handover = doc.data();
+                    const handoverElement = template.content.cloneNode(true);
+
+                    // Fill in basic info
+                    handoverElement.querySelector('.department').textContent = handover.department;
+                    handoverElement.querySelector('.shift').textContent = handover.shift;
+                    handoverElement.querySelector('.submissionTime').textContent = 
+                        handover.submissionTime ? new Date(handover.submissionTime).toLocaleString() : 'N/A';
+
+                    // Fill in status info
+                    handoverElement.querySelector('.selectionCompletion').textContent = handover.selectionCompletion || '0';
+                    handoverElement.querySelector('.replenishmentCompletion').textContent = handover.replenishmentCompletion || '0';
+                    handoverElement.querySelector('.estimatedFinishTime').textContent = handover.estimatedFinishTime || 'N/A';
+
+                    // Fill in staffing info
+                    if (handover.staffing) {
+                        const staffing = handover.staffing;
+                        
+                        // Selectors
+                        handoverElement.querySelector('.selectorsRequired').textContent = staffing.selectors.required || '0';
+                        handoverElement.querySelector('.selectorsAvailable').textContent = staffing.selectors.available || '0';
+                        handoverElement.querySelector('.selectorsDifference').textContent = staffing.selectors.difference || '0';
+                        handoverElement.querySelector('.selectorsNotes').textContent = staffing.selectors.notes || '';
+                        
+                        // Static
+                        handoverElement.querySelector('.staticRequired').textContent = staffing.static.required || '0';
+                        handoverElement.querySelector('.staticAvailable').textContent = staffing.static.available || '0';
+                        handoverElement.querySelector('.staticDifference').textContent = staffing.static.difference || '0';
+                        handoverElement.querySelector('.staticNotes').textContent = staffing.static.notes || '';
+
+                        // Add color coding for differences
+                        const selectorsDiff = handoverElement.querySelector('.selectorsDifference');
+                        const staticDiff = handoverElement.querySelector('.staticDifference');
+                        
+                        [selectorsDiff, staticDiff].forEach(elem => {
+                            const value = parseInt(elem.textContent);
+                            elem.style.color = value < 0 ? 'red' : value > 0 ? 'green' : 'black';
+                        });
+                    }
+
+                    // Fill in equipment status
+                    if (handover.equipment) {
+                        const equipment = ['forklift', 'tugger', 'palletJack', 'scanner', 'trigger'];
+                        equipment.forEach(type => {
+                            if (handover.equipment[type + 's']) {
+                                handoverElement.querySelector('.' + type + 'Status').textContent = 
+                                    handover.equipment[type + 's'].status || 'N/A';
+                                handoverElement.querySelector('.' + type + 'Notes').textContent = 
+                                    handover.equipment[type + 's'].notes || '';
+                            }
+                        });
+                    }
+
+                    handoversList.appendChild(handoverElement);
+                });
+            } catch (error) {
+                console.error('Error loading handovers:', error);
+                handoversList.innerHTML = 'Error loading handovers. Please try again.';
+            }
+        }
+
+        // Add event listeners for filters
+        filterDepartment.addEventListener('change', loadHandovers);
+        filterDate.addEventListener('change', loadHandovers);
+        filterShift.addEventListener('change', loadHandovers);
+
+        // Load handovers when page loads
+        window.addEventListener('DOMContentLoaded', loadHandovers);
+    </script>
 </body>
 </html>
