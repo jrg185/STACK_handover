@@ -4,87 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>S.T.A.C.K. Shift Handover Form</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        function calculateDifference(staffType) {
+            const required = parseInt(document.getElementById(staffType + 'Required').value) || 0;
+            const available = parseInt(document.getElementById(staffType + 'Available').value) || 0;
+            const difference = available - required;
+            document.getElementById(staffType + 'Difference').value = difference;
         }
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        function addTaskRow() {
+            const table = document.getElementById('tasksTable');
+            const newRow = table.insertRow(-1);
+            newRow.innerHTML = `
+                <td><input type="text" name="taskDescription[]"></td>
+                <td><input type="number" name="taskProgress[]" min="0" max="100"></td>
+                <td><input type="time" name="taskETA[]"></td>
+                <td><input type="text" name="taskOwner[]"></td>
+            `;
         }
-        .section {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 4px;
+
+        function addActionRow() {
+            const table = document.getElementById('actionPlanTable');
+            const newRow = table.insertRow(-1);
+            newRow.innerHTML = `
+                <td><input type="text" name="actionItem[]"></td>
+                <td><input type="time" name="actionDeadline[]"></td>
+                <td><input type="text" name="actionOwner[]"></td>
+                <td>
+                    <select name="actionStatus[]">
+                        <option value="pending">Pending</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </td>
+            `;
         }
-        .header {
-            background: #007bff;
-            color: white;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+
+        function addIssueRow() {
+            const table = document.getElementById('issuesTable');
+            const newRow = table.insertRow(-1);
+            newRow.innerHTML = `
+                <td><input type="text" name="issueDescription[]"></td>
+                <td><input type="text" name="issueImpact[]"></td>
+                <td><input type="text" name="issueActions[]"></td>
+                <td><input type="text" name="issueNextSteps[]"></td>
+            `;
         }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, select, textarea {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f8f9fa;
-        }
-        .submit-btn {
-            background: #28a745;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .submit-btn:hover {
-            background: #218838;
-        }
-        .add-btn {
-            background: #007bff;
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-    </style>
+    </script>
 </head>
 <body>
     <div class="container">
@@ -146,6 +113,31 @@
                         <input type="time" id="estimatedFinishTime" name="estimatedFinishTime" required>
                     </div>
                 </div>
+
+                <h3>Staffing Status</h3>
+                <table>
+                    <tr>
+                        <th>Staff Type</th>
+                        <th>Required</th>
+                        <th>Available</th>
+                        <th>Difference</th>
+                        <th>Notes</th>
+                    </tr>
+                    <tr>
+                        <td>Selectors</td>
+                        <td><input type="number" id="selectorsRequired" name="selectorsRequired" min="0" onchange="calculateDifference('selectors')"></td>
+                        <td><input type="number" id="selectorsAvailable" name="selectorsAvailable" min="0" onchange="calculateDifference('selectors')"></td>
+                        <td><input type="number" id="selectorsDifference" name="selectorsDifference" readonly></td>
+                        <td><input type="text" name="selectorsNotes"></td>
+                    </tr>
+                    <tr>
+                        <td>Static</td>
+                        <td><input type="number" id="staticRequired" name="staticRequired" min="0" onchange="calculateDifference('static')"></td>
+                        <td><input type="number" id="staticAvailable" name="staticAvailable" min="0" onchange="calculateDifference('static')"></td>
+                        <td><input type="number" id="staticDifference" name="staticDifference" readonly></td>
+                        <td><input type="text" name="staticNotes"></td>
+                    </tr>
+                </table>
 
                 <h3>Equipment Status</h3>
                 <table>
@@ -283,113 +275,18 @@
                 <h2>Key Notes</h2>
                 <div>
                     <label for="keyNotes">Important Information for Next Shift:</label>
-                    <textarea id="keyNotes" name="keyNotes" rows="4"></textarea>
+                    <textarea id="keyNotes" name="keyNotes"></textarea>
                 </div>
             </div>
 
             <button type="submit" class="submit-btn">Submit Handover</button>
         </form>
-        
+
         <div style="margin-top: 20px; text-align: right;">
             <a href="viewer.html" class="add-btn" style="text-decoration: none;">View Previous Handovers</a>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-<script>
-    // Initialize Firebase with your config
-    const firebaseConfig = {
-        apiKey: "AIzaSyBA_LjilP5G8nagcMtmRfCEIVceT2qObiU",
-        authDomain: "stackdb-e1b31.firebaseapp.com",
-        projectId: "stackdb-e1b31",
-        storageBucket: "stackdb-e1b31.firebasestorage.app",
-        messagingSenderId: "54108058421",
-        appId: "1:54108058421:web:12bd6e9a59ecca8c50127c"
-    };
-
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // Initialize submission time to current time
-    document.getElementById('submissionTime').value = new Date().toISOString().slice(0, 16);
-
-    function addTaskRow() {
-        const table = document.getElementById('tasksTable');
-        const newRow = table.insertRow(-1);
-        newRow.innerHTML = `
-            <td><input type="text" name="taskDescription[]"></td>
-            <td><input type="number" name="taskProgress[]" min="0" max="100"></td>
-            <td><input type="time" name="taskETA[]"></td>
-            <td><input type="text" name="taskOwner[]"></td>
-        `;
-    }
-
-    function addActionRow() {
-        const table = document.getElementById('actionPlanTable');
-        const newRow = table.insertRow(-1);
-        newRow.innerHTML = `
-            <td><input type="text" name="actionItem[]"></td>
-            <td><input type="time" name="actionDeadline[]"></td>
-            <td><input type="text" name="actionOwner[]"></td>
-            <td>
-                <select name="actionStatus[]">
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                </select>
-            </td>
-        `;
-    }
-
-    function addIssueRow() {
-        const table = document.getElementById('issuesTable');
-        const newRow = table.insertRow(-1);
-        newRow.innerHTML = `
-            <td><input type="text" name="issueDescription[]"></td>
-            <td><input type="text" name="issueImpact[]"></td>
-            <td><input type="text" name="issueActions[]"></td>
-            <td><input type="text" name="issueNextSteps[]"></td>
-        `;
-    }
-
-    document.getElementById('handoverForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        // Collect form data
-        const formData = new FormData(this);
-        const data = {
-            timestamp: new Date().toISOString(),
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        // Process form data
-        for (let [key, value] of formData.entries()) {
-            if (key.endsWith('[]')) {
-                const baseKey = key.slice(0, -2);
-                if (!data[baseKey]) data[baseKey] = [];
-                data[baseKey].push(value);
-            } else {
-                data[key] = value;
-            }
-        }
-
-        try {
-            // Add document to Firestore
-            await db.collection('handovers').add(data);
-
-            alert('Handover submitted successfully!');
-            this.reset();
-            // Reset submission time to current time
-            document.getElementById('submissionTime').value = new Date().toISOString().slice(0, 16);
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error submitting handover. Please try again.');
-        }
-    });
-</script>
+    <script src="script.js"></script>
 </body>
 </html>
-
