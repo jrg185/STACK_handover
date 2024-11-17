@@ -65,19 +65,29 @@
             background-color: white;
         }
 
+        /* Card Styles */
         .handover-card {
             background-color: white;
             border: 1px solid #ddd;
             border-radius: 8px;
-            padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
 
         .handover-header {
+            padding: 15px 20px;
+            background-color: #f8f8f8;
+            cursor: pointer;
             border-bottom: 1px solid #eee;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
+        }
+
+        .handover-header:hover {
+            background-color: #f0f0f0;
+        }
+
+        .handover-title {
+            margin: 0;
         }
 
         .handover-title h3 {
@@ -85,11 +95,20 @@
             color: #444;
         }
 
+        .handover-content {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .handover-card.expanded .handover-content {
+            max-height: 2000px;
+            padding: 20px;
+        }
+
         .section {
             margin-bottom: 20px;
-            padding: 15px;
-            background-color: #ffffff;
-            border-radius: 4px;
         }
 
         .section h4 {
@@ -157,7 +176,6 @@
             text-align: center;
             padding: 20px;
             color: #666;
-            font-style: italic;
         }
 
         .error {
@@ -166,10 +184,10 @@
 
         .keyNotes {
             white-space: pre-wrap;
-            padding: 10px;
+            padding: 15px;
             background-color: #f8f8f8;
             border-radius: 4px;
-            border: 1px solid #eee;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -224,7 +242,7 @@
     <!-- Handover Template -->
     <template id="handoverTemplate">
         <div class="handover-card">
-            <div class="handover-header">
+            <div class="handover-header" onclick="toggleCard(this.parentElement)">
                 <div class="handover-title">
                     <h3>Department: <span class="department"></span></h3>
                     <h3>Shift: <span class="shift"></span></h3>
@@ -368,7 +386,11 @@
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.firestore();
-        console.log('Firebase initialized');
+
+        // Toggle card expansion
+        function toggleCard(card) {
+            card.classList.toggle('expanded');
+        }
 
         // Function to load handovers
         async function loadHandovers() {
@@ -376,47 +398,21 @@
             const template = document.getElementById('handoverTemplate');
             
             try {
-                // Start with base query
-                let query = db.collection('handovers');
+                let query = db.collection('handovers').orderBy('timestamp', 'desc');
 
-                // Apply filters
+                // Apply department filter
                 const departmentFilter = document.getElementById('filterDepartment').value;
-                const shiftFilter = document.getElementById('filterShift').value;
-                const dateFilter = document.getElementById('filterDate').value;
-
-                // Log filter values for debugging
-                console.log('Filters:', { departmentFilter, shiftFilter, dateFilter });
-
-                // Department filter
                 if (departmentFilter !== 'all') {
                     query = query.where('department', '==', departmentFilter);
                 }
 
-                // Shift filter
+                // Apply shift filter
+                const shiftFilter = document.getElementById('filterShift').value;
                 if (shiftFilter !== 'all') {
                     query = query.where('shift', '==', shiftFilter);
                 }
 
-                // Date filter
-                if (dateFilter) {
-                    const startDate = new Date(dateFilter);
-                    startDate.setHours(0, 0, 0, 0);
-                    const endDate = new Date(dateFilter);
-                    endDate.setHours(23, 59, 59, 999);
-
-                    console.log('Date range:', { startDate, endDate });
-                    
-                    query = query.where('timestamp', '>=', startDate)
-                              .where('timestamp', '<=', endDate);
-                }
-
-                // Always order by timestamp
-                query = query.orderBy('timestamp', 'desc');
-
-                console.log('Executing query...');
                 const snapshot = await query.get();
-                console.log('Query complete, documents:', snapshot.size);
-
                 handoversList.innerHTML = '';
 
                 if (snapshot.empty) {
@@ -424,7 +420,28 @@
                     return;
                 }
 
-                snapshot.forEach(doc => {
+                // Filter by date if selected
+                const dateFilter = document.getElementById('filterDate').value;
+                let filteredDocs = snapshot.docs;
+                
+                if (dateFilter) {
+                    const filterDate = new Date(dateFilter);
+                    filterDate.setHours(0, 0, 0, 0);
+                    const filterEndDate = new Date(filterDate);
+                    filterEndDate.setHours(23, 59, 59, 999);
+
+                    filteredDocs = snapshot.docs.filter(doc => {
+                        const timestamp = doc.data().timestamp?.toDate();
+                        return timestamp >= filterDate && timestamp <= filterEndDate;
+                    });
+                }
+
+                if (filteredDocs.length === 0) {
+                    handoversList.innerHTML = '<div class="no-data">No handovers found matching the selected filters.</div>';
+                    return;
+                }
+
+                filteredDocs.forEach(doc => {
                     const handover = doc.data();
                     const handoverElement = template.content.cloneNode(true);
 
@@ -432,7 +449,6 @@
                     handoverElement.querySelector('.department').textContent = handover.department;
                     handoverElement.querySelector('.shift').textContent = handover.shift;
                     
-                    // Format timestamp
                     if (handover.timestamp) {
                         const date = handover.timestamp.toDate();
                         handoverElement.querySelector('.submissionTime').textContent = date.toLocaleString();
@@ -458,13 +474,6 @@
                         handoverElement.querySelector('.staticAvailable').textContent = staffing.static.available || '0';
                         handoverElement.querySelector('.staticDifference').textContent = staffing.static.difference || '0';
                         handoverElement.querySelector('.staticNotes').textContent = staffing.static.notes || '';
-
-                        // Color coding for differences
-                        ['selectors', 'static'].forEach(type => {
-                            const diffElement = handoverElement.querySelector(`.${type}Difference`);
-                            const value = parseInt(diffElement.textContent);
-                            diffElement.classList.add(value < 0 ? 'understaffed' : value > 0 ? 'overstaffed' : 'neutral');
-                        });
                     }
 
                     // Equipment status
@@ -483,47 +492,44 @@
                     }
 
                     // Tasks in Progress
+                    const tasksTable = handoverElement.querySelector('.tasksTable');
                     if (handover.tasks && handover.tasks.length > 0) {
-                        const tasksTable = handoverElement.querySelector('.tasksTable');
                         handover.tasks.forEach(task => {
-                            const row = document.createElement('tr');
+                            const row = tasksTable.insertRow(-1);
                             row.innerHTML = `
                                 <td>${task.description || ''}</td>
                                 <td>${task.progress || '0'}%</td>
                                 <td>${task.eta || ''}</td>
                                 <td>${task.owner || ''}</td>
                             `;
-                            tasksTable.appendChild(row);
                         });
                     }
 
                     // Action Plan
+                    const actionTable = handoverElement.querySelector('.actionPlanTable');
                     if (handover.actionItems && handover.actionItems.length > 0) {
-                        const actionTable = handoverElement.querySelector('.actionPlanTable');
                         handover.actionItems.forEach(item => {
-                            const row = document.createElement('tr');
+                            const row = actionTable.insertRow(-1);
                             row.innerHTML = `
                                 <td>${item.item || ''}</td>
                                 <td>${item.deadline || ''}</td>
                                 <td>${item.owner || ''}</td>
                                 <td>${item.status || ''}</td>
                             `;
-                            actionTable.appendChild(row);
                         });
                     }
 
                     // Critical Issues
+                    const issuesTable = handoverElement.querySelector('.issuesTable');
                     if (handover.issues && handover.issues.length > 0) {
-                        const issuesTable = handoverElement.querySelector('.issuesTable');
                         handover.issues.forEach(issue => {
-                            const row = document.createElement('tr');
+                            const row = issuesTable.insertRow(-1);
                             row.innerHTML = `
                                 <td>${issue.description || ''}</td>
                                 <td>${issue.impact || ''}</td>
                                 <td>${issue.actions || ''}</td>
                                 <td>${issue.nextSteps || ''}</td>
                             `;
-                            issuesTable.appendChild(row);
                         });
                     }
 
