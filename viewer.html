@@ -41,30 +41,6 @@
             margin-bottom: 20px;
         }
 
-        .filters {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-            padding: 20px;
-            background-color: #f8f8f8;
-            border-radius: 4px;
-        }
-
-        .filters label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .filters select, .filters input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: white;
-        }
-
         /* Card Styles */
         .handover-card {
             background-color: white;
@@ -197,42 +173,6 @@
 
         <div class="header">
             <h1>S.T.A.C.K. Handover Viewer</h1>
-        </div>
-
-        <div class="filters">
-            <div>
-                <label for="filterDepartment">Department:</label>
-                <select id="filterDepartment">
-                    <option value="all">All Departments</option>
-                    <option value="IC">IC</option>
-                    <option value="NCG">NCG</option>
-                    <option value="RPK">RPK</option>
-                    <option value="SSG">SSG</option>
-                    <option value="CIG">CIG</option>
-                    <option value="WAWA LOAD">WAWA LOAD</option>
-                    <option value="WAWA SELECT">WAWA SELECT</option>
-                    <option value="DRY LOAD">DRY LOAD</option>
-                    <option value="C/F">C/F</option>
-                    <option value="C/F LOAD">C/F LOAD</option>
-                    <option value="REPLEN">REPLEN</option>
-                    <option value="RECEIVING">RECEIVING</option>
-                </select>
-            </div>
-
-            <div>
-                <label for="filterDate">Date:</label>
-                <input type="date" id="filterDate">
-            </div>
-
-            <div>
-                <label for="filterShift">Shift:</label>
-                <select id="filterShift">
-                    <option value="all">All Shifts</option>
-                    <option value="morning">Morning</option>
-                    <option value="afternoon">Afternoon</option>
-                    <option value="night">Night</option>
-                </select>
-            </div>
         </div>
 
         <div id="handoversList">
@@ -393,76 +333,35 @@
         }
 
         // Function to load handovers
-        // Replace the query section in loadHandovers() with this:
-async function loadHandovers() {
-    const handoversList = document.getElementById('handoversList');
-    const template = document.getElementById('handoverTemplate');
-    
-    try {
-        // Get all filters
-        const departmentFilter = document.getElementById('filterDepartment').value;
-        const shiftFilter = document.getElementById('filterShift').value;
-        const dateFilter = document.getElementById('filterDate').value;
+        async function loadHandovers() {
+            const handoversList = document.getElementById('handoversList');
+            const template = document.getElementById('handoverTemplate');
+            
+            try {
+                // Get all handovers, ordered by timestamp
+                const snapshot = await db.collection('handovers')
+                    .orderBy('timestamp', 'desc')
+                    .get();
 
-        console.log('Applied filters:', { departmentFilter, shiftFilter, dateFilter }); // Debug log
+                handoversList.innerHTML = '';
 
-        // Start with base query
-        let query = db.collection('handovers');
+                if (snapshot.empty) {
+                    handoversList.innerHTML = '<div class="no-data">No handovers found.</div>';
+                    return;
+                }
 
-        // Add timestamp ordering first (required for other filters to work)
-        query = query.orderBy('timestamp', 'desc');
+                snapshot.forEach(doc => {
+                    const handover = doc.data();
+                    const handoverElement = template.content.cloneNode(true);
 
-        // Department filter
-        if (departmentFilter !== 'all') {
-            query = query.where('department', '==', departmentFilter);
-        }
-
-        // Shift filter
-        if (shiftFilter !== 'all') {
-            query = query.where('shift', '==', shiftFilter.toLowerCase());  // Make sure to match case
-        }
-
-        // Execute query
-        const snapshot = await query.get();
-        console.log('Query returned:', snapshot.size, 'documents'); // Debug log
-
-        // Clear previous results
-        handoversList.innerHTML = '';
-
-        // Filter by date in memory (since Firestore can't handle multiple range filters)
-        let documents = snapshot.docs;
-        
-        if (dateFilter) {
-            const filterDate = new Date(dateFilter);
-            filterDate.setHours(0, 0, 0, 0);
-            const nextDay = new Date(filterDate);
-            nextDay.setDate(filterDate.getDate() + 1);
-
-            console.log('Filtering by date range:', { filterDate, nextDay }); // Debug log
-
-            documents = documents.filter(doc => {
-                const timestamp = doc.data().timestamp?.toDate();
-                return timestamp >= filterDate && timestamp < nextDay;
-            });
-
-            console.log('After date filter:', documents.length, 'documents'); // Debug log
-        }
-
-        if (documents.length === 0) {
-            handoversList.innerHTML = '<div class="no-data">No handovers found matching the selected filters.</div>';
-            return;
-        }
-
-        // Process and display documents
-        documents.forEach(doc => {
-            const handover = doc.data();
-            // ... rest of your existing display code ...
-        });
-    } catch (error) {
-        console.error('Error loading handovers:', error);
-        handoversList.innerHTML = '<div class="error">Error loading handovers. Please try again.</div>';
-    }
-}
+                    // Basic info
+                    handoverElement.querySelector('.department').textContent = handover.department;
+                    handoverElement.querySelector('.shift').textContent = handover.shift;
+                    
+                    if (handover.timestamp) {
+                        const date = handover.timestamp.toDate();
+                        handoverElement.querySelector('.submissionTime').textContent = date.toLocaleString();
+                    }
 
                     // Status info
                     handoverElement.querySelector('.selectionCompletion').textContent = handover.selectionCompletion || '0';
@@ -484,6 +383,13 @@ async function loadHandovers() {
                         handoverElement.querySelector('.staticAvailable').textContent = staffing.static.available || '0';
                         handoverElement.querySelector('.staticDifference').textContent = staffing.static.difference || '0';
                         handoverElement.querySelector('.staticNotes').textContent = staffing.static.notes || '';
+
+                        // Add color coding for differences
+                        ['selectors', 'static'].forEach(type => {
+                            const diffElement = handoverElement.querySelector(`.${type}Difference`);
+                            const value = parseInt(diffElement.textContent);
+                            diffElement.classList.add(value < 0 ? 'understaffed' : value > 0 ? 'overstaffed' : 'neutral');
+                        });
                     }
 
                     // Equipment status
@@ -550,16 +456,12 @@ async function loadHandovers() {
 
                     handoversList.appendChild(handoverElement);
                 });
+
             } catch (error) {
                 console.error('Error loading handovers:', error);
                 handoversList.innerHTML = '<div class="error">Error loading handovers. Please try again.</div>';
             }
         }
-
-        // Add event listeners for filters
-        document.getElementById('filterDepartment').addEventListener('change', loadHandovers);
-        document.getElementById('filterDate').addEventListener('change', loadHandovers);
-        document.getElementById('filterShift').addEventListener('change', loadHandovers);
 
         // Load handovers when page loads
         window.addEventListener('DOMContentLoaded', loadHandovers);
