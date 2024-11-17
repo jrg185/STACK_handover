@@ -51,11 +51,18 @@
             border-radius: 4px;
         }
 
+        .filters label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
         .filters select, .filters input {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            background-color: white;
         }
 
         .handover-card {
@@ -78,6 +85,21 @@
             color: #444;
         }
 
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #ffffff;
+            border-radius: 4px;
+        }
+
+        .section h4 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
         .status-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -88,27 +110,19 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 15px 0;
+            margin: 10px 0;
         }
 
         th, td {
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #ddd;
             text-align: left;
         }
 
         th {
             background-color: #f8f8f8;
-            font-weight: bold;
-        }
-
-        .section {
-            margin-bottom: 30px;
-        }
-
-        h4 {
+            font-weight: 600;
             color: #333;
-            margin: 20px 0 10px 0;
         }
 
         /* Staffing specific styles */
@@ -143,10 +157,19 @@
             text-align: center;
             padding: 20px;
             color: #666;
+            font-style: italic;
         }
 
         .error {
             color: #dc2626;
+        }
+
+        .keyNotes {
+            white-space: pre-wrap;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+            border: 1px solid #eee;
         }
     </style>
 </head>
@@ -284,17 +307,38 @@
 
                 <div class="tasks-section section">
                     <h4>Tasks in Progress</h4>
-                    <table class="tasksTable"></table>
+                    <table class="tasksTable">
+                        <tr>
+                            <th>Description</th>
+                            <th>Progress (%)</th>
+                            <th>ETA</th>
+                            <th>Owner</th>
+                        </tr>
+                    </table>
                 </div>
 
                 <div class="action-plan-section section">
                     <h4>Action Plan</h4>
-                    <table class="actionPlanTable"></table>
+                    <table class="actionPlanTable">
+                        <tr>
+                            <th>Action Item</th>
+                            <th>Deadline</th>
+                            <th>Owner</th>
+                            <th>Status</th>
+                        </tr>
+                    </table>
                 </div>
 
                 <div class="issues-section section">
                     <h4>Critical Issues</h4>
-                    <table class="issuesTable"></table>
+                    <table class="issuesTable">
+                        <tr>
+                            <th>Issue Description</th>
+                            <th>Impact</th>
+                            <th>Actions Taken</th>
+                            <th>Next Steps</th>
+                        </tr>
+                    </table>
                 </div>
 
                 <div class="notes-section section">
@@ -324,6 +368,7 @@
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.firestore();
+        console.log('Firebase initialized');
 
         // Function to load handovers
         async function loadHandovers() {
@@ -331,30 +376,47 @@
             const template = document.getElementById('handoverTemplate');
             
             try {
-                let query = db.collection('handovers').orderBy('timestamp', 'desc');
+                // Start with base query
+                let query = db.collection('handovers');
 
-                // Apply department filter
-                if (filterDepartment.value !== 'all') {
-                    query = query.where('department', '==', filterDepartment.value);
+                // Apply filters
+                const departmentFilter = document.getElementById('filterDepartment').value;
+                const shiftFilter = document.getElementById('filterShift').value;
+                const dateFilter = document.getElementById('filterDate').value;
+
+                // Log filter values for debugging
+                console.log('Filters:', { departmentFilter, shiftFilter, dateFilter });
+
+                // Department filter
+                if (departmentFilter !== 'all') {
+                    query = query.where('department', '==', departmentFilter);
                 }
 
-                // Apply shift filter
-                if (filterShift.value !== 'all') {
-                    query = query.where('shift', '==', filterShift.value);
+                // Shift filter
+                if (shiftFilter !== 'all') {
+                    query = query.where('shift', '==', shiftFilter);
                 }
 
-                // Apply date filter if selected
-                if (filterDate.value) {
-                    const startDate = new Date(filterDate.value);
+                // Date filter
+                if (dateFilter) {
+                    const startDate = new Date(dateFilter);
                     startDate.setHours(0, 0, 0, 0);
-                    const endDate = new Date(filterDate.value);
+                    const endDate = new Date(dateFilter);
                     endDate.setHours(23, 59, 59, 999);
+
+                    console.log('Date range:', { startDate, endDate });
                     
                     query = query.where('timestamp', '>=', startDate)
                               .where('timestamp', '<=', endDate);
                 }
 
+                // Always order by timestamp
+                query = query.orderBy('timestamp', 'desc');
+
+                console.log('Executing query...');
                 const snapshot = await query.get();
+                console.log('Query complete, documents:', snapshot.size);
+
                 handoversList.innerHTML = '';
 
                 if (snapshot.empty) {
@@ -418,6 +480,56 @@
                                     handover.equipment[type + 's'].notes || '';
                             }
                         });
+                    }
+
+                    // Tasks in Progress
+                    if (handover.tasks && handover.tasks.length > 0) {
+                        const tasksTable = handoverElement.querySelector('.tasksTable');
+                        handover.tasks.forEach(task => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${task.description || ''}</td>
+                                <td>${task.progress || '0'}%</td>
+                                <td>${task.eta || ''}</td>
+                                <td>${task.owner || ''}</td>
+                            `;
+                            tasksTable.appendChild(row);
+                        });
+                    }
+
+                    // Action Plan
+                    if (handover.actionItems && handover.actionItems.length > 0) {
+                        const actionTable = handoverElement.querySelector('.actionPlanTable');
+                        handover.actionItems.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.item || ''}</td>
+                                <td>${item.deadline || ''}</td>
+                                <td>${item.owner || ''}</td>
+                                <td>${item.status || ''}</td>
+                            `;
+                            actionTable.appendChild(row);
+                        });
+                    }
+
+                    // Critical Issues
+                    if (handover.issues && handover.issues.length > 0) {
+                        const issuesTable = handoverElement.querySelector('.issuesTable');
+                        handover.issues.forEach(issue => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${issue.description || ''}</td>
+                                <td>${issue.impact || ''}</td>
+                                <td>${issue.actions || ''}</td>
+                                <td>${issue.nextSteps || ''}</td>
+                            `;
+                            issuesTable.appendChild(row);
+                        });
+                    }
+
+                    // Key Notes
+                    if (handover.keyNotes) {
+                        handoverElement.querySelector('.keyNotes').textContent = handover.keyNotes;
                     }
 
                     handoversList.appendChild(handoverElement);
