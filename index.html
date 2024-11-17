@@ -287,6 +287,126 @@
         </div>
     </div>
 
+    <!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script>
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyBA_LjilP5G8nagcMtmRfCEIVceT2qObiU",
+        authDomain: "stackdb-e1b31.firebaseapp.com",
+        projectId: "stackdb-e1b31",
+        storageBucket: "stackdb-e1b31.firebasestorage.app",
+        messagingSenderId: "54108058421",
+        appId: "1:54108058421:web:12bd6e9a59ecca8c50127c"
+    };
+    // Initialize Firebase
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+    console.log('Firebase initialized');
+
+    // Handle form submission
+    document.getElementById('handoverForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Get form data
+        const formData = new FormData(e.target);
+        
+        // Create handover document
+        const handoverData = {
+            // Existing fields
+            department: formData.get('department'),
+            shift: formData.get('shift'),
+            submissionTime: formData.get('submissionTime'),
+            selectionCompletion: parseInt(formData.get('selectionCompletion')),
+            replenishmentCompletion: parseInt(formData.get('replenishmentCompletion')),
+            estimatedFinishTime: formData.get('estimatedFinishTime'),
+            
+            // New staffing data
+            staffing: {
+                selectors: {
+                    required: parseInt(formData.get('selectorsRequired')) || 0,
+                    available: parseInt(formData.get('selectorsAvailable')) || 0,
+                    difference: parseInt(formData.get('selectorsDifference')) || 0,
+                    notes: formData.get('selectorsNotes') || ''
+                },
+                static: {
+                    required: parseInt(formData.get('staticRequired')) || 0,
+                    available: parseInt(formData.get('staticAvailable')) || 0,
+                    difference: parseInt(formData.get('staticDifference')) || 0,
+                    notes: formData.get('staticNotes') || ''
+                }
+            },
+            
+            // Equipment status
+            equipment: {
+                forklifts: {
+                    status: formData.get('forkliftStatus'),
+                    notes: formData.get('forkliftNotes')
+                },
+                tuggers: {
+                    status: formData.get('tuggerStatus'),
+                    notes: formData.get('tuggerNotes')
+                },
+                palletJacks: {
+                    status: formData.get('palletJackStatus'),
+                    notes: formData.get('palletJackNotes')
+                },
+                scanners: {
+                    status: formData.get('scannerStatus'),
+                    notes: formData.get('scannerNotes')
+                },
+                triggers: {
+                    status: formData.get('triggerStatus'),
+                    notes: formData.get('triggerNotes')
+                }
+            },
+            
+            // Get tasks data
+            tasks: Array.from(document.querySelectorAll('#tasksTable tr:not(:first-child)')).map(row => ({
+                description: row.querySelector('[name="taskDescription[]"]').value,
+                progress: parseInt(row.querySelector('[name="taskProgress[]"]').value) || 0,
+                eta: row.querySelector('[name="taskETA[]"]').value,
+                owner: row.querySelector('[name="taskOwner[]"]').value
+            })),
+            
+            // Get action items
+            actionItems: Array.from(document.querySelectorAll('#actionPlanTable tr:not(:first-child)')).map(row => ({
+                item: row.querySelector('[name="actionItem[]"]').value,
+                deadline: row.querySelector('[name="actionDeadline[]"]').value,
+                owner: row.querySelector('[name="actionOwner[]"]').value,
+                status: row.querySelector('[name="actionStatus[]"]').value
+            })),
+            
+            // Get critical issues
+            issues: Array.from(document.querySelectorAll('#issuesTable tr:not(:first-child)')).map(row => ({
+                description: row.querySelector('[name="issueDescription[]"]').value,
+                impact: row.querySelector('[name="issueImpact[]"]').value,
+                actions: row.querySelector('[name="issueActions[]"]').value,
+                nextSteps: row.querySelector('[name="issueNextSteps[]"]').value
+            })),
+            
+            // Key notes
+            keyNotes: formData.get('keyNotes'),
+            
+            // Add timestamp
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+            // Save to Firestore
+            await db.collection('handovers').add(handoverData);
+            alert('Handover submitted successfully!');
+            window.location.href = 'viewer.html';
+        } catch (error) {
+            console.error('Error saving handover:', error);
+            alert('Error submitting handover. Please try again.');
+        }
+    });
+</script>
+
     <script src="script.js"></script>
 </body>
 </html>
