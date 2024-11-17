@@ -393,66 +393,76 @@
         }
 
         // Function to load handovers
-        async function loadHandovers() {
-            const handoversList = document.getElementById('handoversList');
-            const template = document.getElementById('handoverTemplate');
-            
-            try {
-                let query = db.collection('handovers').orderBy('timestamp', 'desc');
+        // Replace the query section in loadHandovers() with this:
+async function loadHandovers() {
+    const handoversList = document.getElementById('handoversList');
+    const template = document.getElementById('handoverTemplate');
+    
+    try {
+        // Get all filters
+        const departmentFilter = document.getElementById('filterDepartment').value;
+        const shiftFilter = document.getElementById('filterShift').value;
+        const dateFilter = document.getElementById('filterDate').value;
 
-                // Apply department filter
-                const departmentFilter = document.getElementById('filterDepartment').value;
-                if (departmentFilter !== 'all') {
-                    query = query.where('department', '==', departmentFilter);
-                }
+        console.log('Applied filters:', { departmentFilter, shiftFilter, dateFilter }); // Debug log
 
-                // Apply shift filter
-                const shiftFilter = document.getElementById('filterShift').value;
-                if (shiftFilter !== 'all') {
-                    query = query.where('shift', '==', shiftFilter);
-                }
+        // Start with base query
+        let query = db.collection('handovers');
 
-                const snapshot = await query.get();
-                handoversList.innerHTML = '';
+        // Add timestamp ordering first (required for other filters to work)
+        query = query.orderBy('timestamp', 'desc');
 
-                if (snapshot.empty) {
-                    handoversList.innerHTML = '<div class="no-data">No handovers found matching the selected filters.</div>';
-                    return;
-                }
+        // Department filter
+        if (departmentFilter !== 'all') {
+            query = query.where('department', '==', departmentFilter);
+        }
 
-                // Filter by date if selected
-                const dateFilter = document.getElementById('filterDate').value;
-                let filteredDocs = snapshot.docs;
-                
-                if (dateFilter) {
-                    const filterDate = new Date(dateFilter);
-                    filterDate.setHours(0, 0, 0, 0);
-                    const filterEndDate = new Date(filterDate);
-                    filterEndDate.setHours(23, 59, 59, 999);
+        // Shift filter
+        if (shiftFilter !== 'all') {
+            query = query.where('shift', '==', shiftFilter.toLowerCase());  // Make sure to match case
+        }
 
-                    filteredDocs = snapshot.docs.filter(doc => {
-                        const timestamp = doc.data().timestamp?.toDate();
-                        return timestamp >= filterDate && timestamp <= filterEndDate;
-                    });
-                }
+        // Execute query
+        const snapshot = await query.get();
+        console.log('Query returned:', snapshot.size, 'documents'); // Debug log
 
-                if (filteredDocs.length === 0) {
-                    handoversList.innerHTML = '<div class="no-data">No handovers found matching the selected filters.</div>';
-                    return;
-                }
+        // Clear previous results
+        handoversList.innerHTML = '';
 
-                filteredDocs.forEach(doc => {
-                    const handover = doc.data();
-                    const handoverElement = template.content.cloneNode(true);
+        // Filter by date in memory (since Firestore can't handle multiple range filters)
+        let documents = snapshot.docs;
+        
+        if (dateFilter) {
+            const filterDate = new Date(dateFilter);
+            filterDate.setHours(0, 0, 0, 0);
+            const nextDay = new Date(filterDate);
+            nextDay.setDate(filterDate.getDate() + 1);
 
-                    // Basic info
-                    handoverElement.querySelector('.department').textContent = handover.department;
-                    handoverElement.querySelector('.shift').textContent = handover.shift;
-                    
-                    if (handover.timestamp) {
-                        const date = handover.timestamp.toDate();
-                        handoverElement.querySelector('.submissionTime').textContent = date.toLocaleString();
-                    }
+            console.log('Filtering by date range:', { filterDate, nextDay }); // Debug log
+
+            documents = documents.filter(doc => {
+                const timestamp = doc.data().timestamp?.toDate();
+                return timestamp >= filterDate && timestamp < nextDay;
+            });
+
+            console.log('After date filter:', documents.length, 'documents'); // Debug log
+        }
+
+        if (documents.length === 0) {
+            handoversList.innerHTML = '<div class="no-data">No handovers found matching the selected filters.</div>';
+            return;
+        }
+
+        // Process and display documents
+        documents.forEach(doc => {
+            const handover = doc.data();
+            // ... rest of your existing display code ...
+        });
+    } catch (error) {
+        console.error('Error loading handovers:', error);
+        handoversList.innerHTML = '<div class="error">Error loading handovers. Please try again.</div>';
+    }
+}
 
                     // Status info
                     handoverElement.querySelector('.selectionCompletion').textContent = handover.selectionCompletion || '0';
