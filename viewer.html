@@ -41,6 +41,30 @@
             margin-bottom: 20px;
         }
 
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+        }
+
+        .filters label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .filters select, .filters input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+
         /* Card Styles */
         .handover-card {
             background-color: white;
@@ -173,6 +197,42 @@
 
         <div class="header">
             <h1>S.T.A.C.K. Handover Viewer</h1>
+        </div>
+
+        <div class="filters">
+            <div>
+                <label for="filterDepartment">Department:</label>
+                <select id="filterDepartment">
+                    <option value="all">All Departments</option>
+                    <option value="IC">IC</option>
+                    <option value="NCG">NCG</option>
+                    <option value="RPK">RPK</option>
+                    <option value="SSG">SSG</option>
+                    <option value="CIG">CIG</option>
+                    <option value="WAWA LOAD">WAWA LOAD</option>
+                    <option value="WAWA SELECT">WAWA SELECT</option>
+                    <option value="DRY LOAD">DRY LOAD</option>
+                    <option value="C/F">C/F</option>
+                    <option value="C/F LOAD">C/F LOAD</option>
+                    <option value="REPLEN">REPLEN</option>
+                    <option value="RECEIVING">RECEIVING</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="filterDate">Date:</label>
+                <input type="date" id="filterDate">
+            </div>
+
+            <div>
+                <label for="filterShift">Shift:</label>
+                <select id="filterShift">
+                    <option value="all">All Shifts</option>
+                    <option value="morning">Morning</option>
+                    <option value="afternoon">Afternoon</option>
+                    <option value="night">Night</option>
+                </select>
+            </div>
         </div>
 
         <div id="handoversList">
@@ -338,19 +398,50 @@
             const template = document.getElementById('handoverTemplate');
             
             try {
-                // Get all handovers, ordered by timestamp
-                const snapshot = await db.collection('handovers')
-                    .orderBy('timestamp', 'desc')
-                    .get();
+                let query = db.collection('handovers').orderBy('timestamp', 'desc');
 
+                // Apply department filter
+                const departmentFilter = document.getElementById('filterDepartment').value;
+                if (departmentFilter !== 'all') {
+                    query = query.where('department', '==', departmentFilter);
+                }
+
+                // Apply shift filter
+                const shiftFilter = document.getElementById('filterShift').value;
+                if (shiftFilter !== 'all') {
+                    query = query.where('shift', '==', shiftFilter);
+                }
+
+                const snapshot = await query.get();
                 handoversList.innerHTML = '';
 
                 if (snapshot.empty) {
-                    handoversList.innerHTML = '<div class="no-data">No handovers found.</div>';
+                    handoversList.innerHTML = '<div class="no-data">No handovers found matching the selected filters.</div>';
                     return;
                 }
 
-                snapshot.forEach(doc => {
+                // Filter by date if selected
+                const dateFilter = document.getElementById('filterDate').value;
+                let filteredDocs = snapshot.docs;
+                
+                if (dateFilter) {
+                    const filterDate = new Date(dateFilter);
+                    filterDate.setHours(0, 0, 0, 0);
+                    const filterEndDate = new Date(filterDate);
+                    filterEndDate.setHours(23, 59, 59, 999);
+
+                    filteredDocs = snapshot.docs.filter(doc => {
+                        const timestamp = doc.data().timestamp?.toDate();
+                        return timestamp >= filterDate && timestamp <= filterEndDate;
+                    });
+                }
+
+                if (filteredDocs.length === 0) {
+                    handoversList.innerHTML = '<div class="no-data">No handovers found matching the selected filters.</div>';
+                    return;
+                }
+
+                filteredDocs.forEach(doc => {
                     const handover = doc.data();
                     const handoverElement = template.content.cloneNode(true);
 
@@ -383,13 +474,6 @@
                         handoverElement.querySelector('.staticAvailable').textContent = staffing.static.available || '0';
                         handoverElement.querySelector('.staticDifference').textContent = staffing.static.difference || '0';
                         handoverElement.querySelector('.staticNotes').textContent = staffing.static.notes || '';
-
-                        // Add color coding for differences
-                        ['selectors', 'static'].forEach(type => {
-                            const diffElement = handoverElement.querySelector(`.${type}Difference`);
-                            const value = parseInt(diffElement.textContent);
-                            diffElement.classList.add(value < 0 ? 'understaffed' : value > 0 ? 'overstaffed' : 'neutral');
-                        });
                     }
 
                     // Equipment status
@@ -456,12 +540,16 @@
 
                     handoversList.appendChild(handoverElement);
                 });
-
             } catch (error) {
                 console.error('Error loading handovers:', error);
                 handoversList.innerHTML = '<div class="error">Error loading handovers. Please try again.</div>';
             }
         }
+
+        // Add event listeners for filters
+        document.getElementById('filterDepartment').addEventListener('change', loadHandovers);
+        document.getElementById('filterDate').addEventListener('change', loadHandovers);
+        document.getElementById('filterShift').addEventListener('change', loadHandovers);
 
         // Load handovers when page loads
         window.addEventListener('DOMContentLoaded', loadHandovers);
