@@ -422,6 +422,48 @@
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
+        const FORM_PASSWORD = 'McLane123!'; // Replace with your desired password
+
+// Add password verification div before the form
+document.querySelector('.container').insertAdjacentHTML('afterbegin', `
+    <div id="passwordSection" style="text-align: center; margin-bottom: 20px;">
+        <div style="max-width: 300px; margin: 0 auto;">
+            <label for="password" style="display: block; margin-bottom: 8px;">Enter Password:</label>
+            <input type="password" id="password" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px;">
+            <button onclick="verifyPassword()" style="background-color: #3b82f6; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; width: 100%;">Submit</button>
+            <p id="passwordError" style="color: #dc2626; display: none; margin-top: 8px;">Incorrect password</p>
+        </div>
+    </div>
+`);
+
+// Hide the form initially
+document.getElementById('handoverForm').style.display = 'none';
+document.querySelector('.container a').style.display = 'none'; // Hide the viewer link
+
+// Password verification function
+function verifyPassword() {
+    const password = document.getElementById('password').value;
+    if (password === FORM_PASSWORD) {
+        document.getElementById('passwordSection').style.display = 'none';
+        document.getElementById('handoverForm').style.display = 'block';
+        document.querySelector('.container a').style.display = 'block';
+        // Store password in sessionStorage for viewer.html
+        sessionStorage.setItem('formPassword', password);
+    } else {
+        document.getElementById('passwordError').style.display = 'block';
+    }
+}
+
+// Modify your form submission handler to include password verification
+document.getElementById('handoverForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Verify password again for extra security
+    if (sessionStorage.getItem('formPassword') !== FORM_PASSWORD) {
+        alert('Session expired. Please refresh and login again.');
+        window.location.reload();
+        return;
+    }
         const db = firebase.firestore();
         console.log('Firebase initialized');
 
