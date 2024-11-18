@@ -39,6 +39,11 @@
             text-decoration: none;
             border-radius: 4px;
             margin-bottom: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .back-btn:hover {
+            background-color: #e0e0e0;
         }
 
         .filters {
@@ -55,6 +60,7 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 500;
+            color: #444;
         }
 
         .filters select, .filters input {
@@ -63,9 +69,14 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             background-color: white;
+            font-size: 14px;
         }
 
-        /* Card Styles */
+        .filters select:focus, .filters input:focus {
+            outline: none;
+            border-color: #666;
+        }
+
         .handover-card {
             background-color: white;
             border: 1px solid #ddd;
@@ -80,6 +91,7 @@
             background-color: #f8f8f8;
             cursor: pointer;
             border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
         }
 
         .handover-header:hover {
@@ -93,13 +105,14 @@
         .handover-title h3 {
             margin: 5px 0;
             color: #444;
+            font-size: 16px;
         }
 
         .handover-content {
-            padding: 0 20px;
+            padding: 0;
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease-out;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
         }
 
         .handover-card.expanded .handover-content {
@@ -124,12 +137,14 @@
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
+            font-size: 14px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 10px 0;
+            font-size: 14px;
         }
 
         th, td {
@@ -144,7 +159,6 @@
             color: #333;
         }
 
-        /* Staffing specific styles */
         .understaffed {
             color: #dc2626;
             font-weight: bold;
@@ -159,7 +173,6 @@
             color: #000000;
         }
 
-        /* Equipment status styles */
         .operational {
             color: #16a34a;
         }
@@ -176,6 +189,7 @@
             text-align: center;
             padding: 20px;
             color: #666;
+            font-size: 16px;
         }
 
         .error {
@@ -188,6 +202,26 @@
             background-color: #f8f8f8;
             border-radius: 4px;
             margin-top: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .filters {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
         }
     </style>
 </head>
@@ -239,6 +273,7 @@
             <div class="loading">Loading handovers...</div>
         </div>
     </div>
+
     <!-- Handover Template -->
     <template id="handoverTemplate">
         <div class="handover-card">
@@ -366,12 +401,11 @@
             </div>
         </div>
     </template>
-
     <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script>
-        // Your web app's Firebase configuration
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBA_LjilP5G8nagcMtmRfCEIVceT2qObiU",
             authDomain: "stackdb-e1b31.firebaseapp.com",
@@ -392,152 +426,194 @@
             card.classList.toggle('expanded');
         }
 
-        // Function to load handovers
+        // Function to load handovers with improved filtering
         async function loadHandovers() {
             const handoversList = document.getElementById('handoversList');
             const template = document.getElementById('handoverTemplate');
             
             try {
-                let query = db.collection('handovers').orderBy('timestamp', 'desc');
-
-                // Apply department filter
+                // Show loading state
+                handoversList.innerHTML = '<div class="loading">Loading handovers...</div>';
+                
+                // Get filter values
                 const departmentFilter = document.getElementById('filterDepartment').value;
+                const shiftFilter = document.getElementById('filterShift').value;
+                const dateFilter = document.getElementById('filterDate').value;
+                
+                // Start with base query
+                let query = db.collection('handovers')
+                    .orderBy('timestamp', 'desc');
+                
+                // Apply Firestore filters (department and shift)
                 if (departmentFilter !== 'all') {
                     query = query.where('department', '==', departmentFilter);
                 }
-
-                // Apply shift filter
-                const shiftFilter = document.getElementById('filterShift').value;
+                
                 if (shiftFilter !== 'all') {
                     query = query.where('shift', '==', shiftFilter);
                 }
-
-                const snapshot = await query.get();
-                handoversList.innerHTML = '';
-
-                if (snapshot.empty) {
-                    handoversList.innerHTML = '<div class="no-data">No handovers found matching the selected filters.</div>';
-                    return;
-                }
-
-                // Filter by date if selected
-                const dateFilter = document.getElementById('filterDate').value;
-                let filteredDocs = snapshot.docs;
                 
+                // Execute query
+                const snapshot = await query.get();
+                
+                // Filter by date if selected (client-side filtering)
+                let filteredDocs = snapshot.docs;
                 if (dateFilter) {
                     const filterDate = new Date(dateFilter);
                     filterDate.setHours(0, 0, 0, 0);
                     const filterEndDate = new Date(filterDate);
                     filterEndDate.setHours(23, 59, 59, 999);
-
+                    
                     filteredDocs = snapshot.docs.filter(doc => {
                         const timestamp = doc.data().timestamp?.toDate();
-                        return timestamp >= filterDate && timestamp <= filterEndDate;
+                        return timestamp && timestamp >= filterDate && timestamp <= filterEndDate;
                     });
                 }
-
+                
+                // Clear previous content
+                handoversList.innerHTML = '';
+                
+                // Check if we have any results
                 if (filteredDocs.length === 0) {
                     handoversList.innerHTML = '<div class="no-data">No handovers found matching the selected filters.</div>';
                     return;
                 }
-
+                
+                // Render handovers
                 filteredDocs.forEach(doc => {
                     const handover = doc.data();
                     const handoverElement = template.content.cloneNode(true);
-
-                    // Basic info
-                    handoverElement.querySelector('.department').textContent = handover.department;
-                    handoverElement.querySelector('.shift').textContent = handover.shift;
                     
+                    // Basic info
+                    handoverElement.querySelector('.department').textContent = handover.department || 'N/A';
+                    handoverElement.querySelector('.shift').textContent = handover.shift || 'N/A';
+                    
+                    // Format timestamp
                     if (handover.timestamp) {
                         const date = handover.timestamp.toDate();
-                        handoverElement.querySelector('.submissionTime').textContent = date.toLocaleString();
+                        const formattedDate = new Intl.DateTimeFormat('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        }).format(date);
+                        handoverElement.querySelector('.submissionTime').textContent = formattedDate;
+                    } else {
+                        handoverElement.querySelector('.submissionTime').textContent = 'N/A';
                     }
-
-                    // Status info
-                    handoverElement.querySelector('.selectionCompletion').textContent = handover.selectionCompletion || '0';
-                    handoverElement.querySelector('.replenishmentCompletion').textContent = handover.replenishmentCompletion || '0';
-                    handoverElement.querySelector('.estimatedFinishTime').textContent = handover.estimatedFinishTime || 'N/A';
-
-                    // Staffing info
+                    
+                    // Status info with null checks
+                    handoverElement.querySelector('.selectionCompletion').textContent = 
+                        handover.selectionCompletion?.toString() || '0';
+                    handoverElement.querySelector('.replenishmentCompletion').textContent = 
+                        handover.replenishmentCompletion?.toString() || '0';
+                    handoverElement.querySelector('.estimatedFinishTime').textContent = 
+                        handover.estimatedFinishTime || 'N/A';
+                    
+                    // Staffing info with null checks
                     if (handover.staffing) {
                         const staffing = handover.staffing;
                         
                         // Selectors
-                        handoverElement.querySelector('.selectorsRequired').textContent = staffing.selectors.required || '0';
-                        handoverElement.querySelector('.selectorsAvailable').textContent = staffing.selectors.available || '0';
-                        handoverElement.querySelector('.selectorsDifference').textContent = staffing.selectors.difference || '0';
-                        handoverElement.querySelector('.selectorsNotes').textContent = staffing.selectors.notes || '';
+                        const selectorsSection = {
+                            required: staffing.selectors?.required || '0',
+                            available: staffing.selectors?.available || '0',
+                            difference: staffing.selectors?.difference || '0',
+                            notes: staffing.selectors?.notes || ''
+                        };
                         
-                        // Static
-                        handoverElement.querySelector('.staticRequired').textContent = staffing.static.required || '0';
-                        handoverElement.querySelector('.staticAvailable').textContent = staffing.static.available || '0';
-                        handoverElement.querySelector('.staticDifference').textContent = staffing.static.difference || '0';
-                        handoverElement.querySelector('.staticNotes').textContent = staffing.static.notes || '';
+                        handoverElement.querySelector('.selectorsRequired').textContent = selectorsSection.required;
+                        handoverElement.querySelector('.selectorsAvailable').textContent = selectorsSection.available;
+                        handoverElement.querySelector('.selectorsDifference').textContent = selectorsSection.difference;
+                        handoverElement.querySelector('.selectorsNotes').textContent = selectorsSection.notes;
+                        
+                        // Add class based on difference for color coding
+                        const selectorsDiffElement = handoverElement.querySelector('.selectorsDifference');
+                        const selectorsDiff = parseInt(selectorsSection.difference);
+                        if (selectorsDiff < 0) {
+                            selectorsDiffElement.classList.add('understaffed');
+                        } else if (selectorsDiff > 0) {
+                            selectorsDiffElement.classList.add('overstaffed');
+                        } else {
+                            selectorsDiffElement.classList.add('neutral');
+                        }
+                        
+                        // Static staff
+                        const staticSection = {
+                            required: staffing.static?.required || '0',
+                            available: staffing.static?.available || '0',
+                            difference: staffing.static?.difference || '0',
+                            notes: staffing.static?.notes || ''
+                        };
+                        
+                        handoverElement.querySelector('.staticRequired').textContent = staticSection.required;
+                        handoverElement.querySelector('.staticAvailable').textContent = staticSection.available;
+                        handoverElement.querySelector('.staticDifference').textContent = staticSection.difference;
+                        handoverElement.querySelector('.staticNotes').textContent = staticSection.notes;
+                        
+                        // Add class based on difference for color coding
+                        const staticDiffElement = handoverElement.querySelector('.staticDifference');
+                        const staticDiff = parseInt(staticSection.difference);
+                        if (staticDiff < 0) {
+                            staticDiffElement.classList.add('understaffed');
+                        } else if (staticDiff > 0) {
+                            staticDiffElement.classList.add('overstaffed');
+                        } else {
+                            staticDiffElement.classList.add('neutral');
+                        }
                     }
-
-                    // Equipment status
+                    
+                    // Equipment status with improved error handling
                     if (handover.equipment) {
-                        ['forklift', 'tugger', 'palletJack', 'scanner', 'trigger'].forEach(type => {
-                            if (handover.equipment[type + 's']) {
+                        const equipmentTypes = ['forklift', 'tugger', 'palletJack', 'scanner', 'trigger'];
+                        
+                        equipmentTypes.forEach(type => {
+                            const equipment = handover.equipment[type + 's'];
+                            if (equipment) {
                                 const statusElement = handoverElement.querySelector('.' + type + 'Status');
-                                statusElement.textContent = handover.equipment[type + 's'].status || 'N/A';
-                                statusElement.className = type + 'Status ' + 
-                                    (handover.equipment[type + 's'].status || '').toLowerCase().replace(' ', '-');
+                                const notesElement = handoverElement.querySelector('.' + type + 'Notes');
                                 
-                                handoverElement.querySelector('.' + type + 'Notes').textContent = 
-                                    handover.equipment[type + 's'].notes || '';
+                                if (statusElement) {
+                                    statusElement.textContent = equipment.status || 'N/A';
+                                    // Add appropriate class based on status
+                                    const status = (equipment.status || '').toLowerCase();
+                                    if (status.includes('operational')) {
+                                        statusElement.classList.add('operational');
+                                    } else if (status.includes('maintenance')) {
+                                        statusElement.classList.add('maintenance-required');
+                                    } else if (status.includes('offline')) {
+                                        statusElement.classList.add('offline');
+                                    }
+                                }
+                                
+                                if (notesElement) {
+                                    notesElement.textContent = equipment.notes || '';
+                                }
                             }
                         });
                     }
-
-                    // Tasks in Progress
-                    const tasksTable = handoverElement.querySelector('.tasksTable');
-                    if (handover.tasks && handover.tasks.length > 0) {
-                        handover.tasks.forEach(task => {
-                            const row = tasksTable.insertRow(-1);
-                            row.innerHTML = `
-                                <td>${task.description || ''}</td>
-                                <td>${task.progress || '0'}%</td>
-                                <td>${task.eta || ''}</td>
-                                <td>${task.owner || ''}</td>
-                            `;
-                        });
-                    }
-
-                    // Action Plan
-                    const actionTable = handoverElement.querySelector('.actionPlanTable');
-                    if (handover.actionItems && handover.actionItems.length > 0) {
-                        handover.actionItems.forEach(item => {
-                            const row = actionTable.insertRow(-1);
-                            row.innerHTML = `
-                                <td>${item.item || ''}</td>
-                                <td>${item.deadline || ''}</td>
-                                <td>${item.owner || ''}</td>
-                                <td>${item.status || ''}</td>
-                            `;
-                        });
-                    }
-
-                    // Critical Issues
-                    const issuesTable = handoverElement.querySelector('.issuesTable');
-                    if (handover.issues && handover.issues.length > 0) {
-                        handover.issues.forEach(issue => {
-                            const row = issuesTable.insertRow(-1);
-                            row.innerHTML = `
-                                <td>${issue.description || ''}</td>
-                                <td>${issue.impact || ''}</td>
-                                <td>${issue.actions || ''}</td>
-                                <td>${issue.nextSteps || ''}</td>
-                            `;
-                        });
-                    }
-
+                    
+                    // Render tables (Tasks, Action Plan, Issues)
+                    renderTable(handoverElement, '.tasksTable', handover.tasks, [
+                        'description', 'progress', 'eta', 'owner'
+                    ]);
+                    
+                    renderTable(handoverElement, '.actionPlanTable', handover.actionItems, [
+                        'item', 'deadline', 'owner', 'status'
+                    ]);
+                    
+                    renderTable(handoverElement, '.issuesTable', handover.issues, [
+                        'description', 'impact', 'actions', 'nextSteps'
+                    ]);
+                    
                     // Key Notes
-                    if (handover.keyNotes) {
-                        handoverElement.querySelector('.keyNotes').textContent = handover.keyNotes;
+                    const keyNotesElement = handoverElement.querySelector('.keyNotes');
+                    if (keyNotesElement) {
+                        keyNotesElement.textContent = handover.keyNotes || '';
                     }
-
+                    
                     handoversList.appendChild(handoverElement);
                 });
             } catch (error) {
@@ -546,13 +622,44 @@
             }
         }
 
-        // Add event listeners for filters
-        document.getElementById('filterDepartment').addEventListener('change', loadHandovers);
-        document.getElementById('filterDate').addEventListener('change', loadHandovers);
-        document.getElementById('filterShift').addEventListener('change', loadHandovers);
+        // Helper function to render tables
+        function renderTable(element, tableSelector, data, columns) {
+            const table = element.querySelector(tableSelector);
+            if (!table || !data || !Array.isArray(data)) return;
+            
+            data.forEach(item => {
+                const row = table.insertRow(-1);
+                columns.forEach(column => {
+                    const cell = row.insertCell(-1);
+                    cell.textContent = item[column] || '';
+                    
+                    // Special handling for progress column
+                    if (column === 'progress') {
+                        cell.textContent = `${item[column] || '0'}%`;
+                    }
+                });
+            });
+        }
 
-        // Load handovers when page loads
-        window.addEventListener('DOMContentLoaded', loadHandovers);
+        // Add event listeners for filters
+        function addFilterListeners() {
+            const filters = ['filterDepartment', 'filterDate', 'filterShift'];
+            
+            filters.forEach(filterId => {
+                const element = document.getElementById(filterId);
+                if (element) {
+                    element.addEventListener('change', () => {
+                        loadHandovers();
+                    });
+                }
+            });
+        }
+
+        // Initialize filters and load initial data when DOM is loaded
+        window.addEventListener('DOMContentLoaded', () => {
+            addFilterListeners();
+            loadHandovers();
+        });
     </script>
 </body>
 </html>
